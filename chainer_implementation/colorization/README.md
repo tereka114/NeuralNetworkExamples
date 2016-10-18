@@ -1,2 +1,1 @@
-Implementation of Thesis「Colorful Image Colorization」
-
+* Implementation of Thesis「Colorful Image Colorization」
