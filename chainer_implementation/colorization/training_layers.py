@@ -68,13 +68,6 @@ class NNEncLayer(object):
     def forward(self, bottom, top):
         top[0].data[...] = self.nnenc.encode_points_mtx_nd(bottom[0].data[...], axis=1)
 
-    def backward(self, top, propagate_down, bottom):
-        # no back-prop
-        for i in range(len(bottom)):
-            if not propagate_down[i]:
-                continue
-            bottom[i].diff[...] = np.zeros_like(bottom[i].data)
-
 
 class PriorBoostLayer(object):
     ''' Layer boosts ab values based on their rarity
@@ -104,13 +97,6 @@ class PriorBoostLayer(object):
     def forward(self, bottom, top):
         top[0].data[...] = self.pc.forward(bottom[0].data[...], axis=1)
 
-    def backward(self, top, propagate_down, bottom):
-        # no back-prop
-        for i in range(len(bottom)):
-            if not propagate_down[i]:
-                continue
-            bottom[i].diff[...] = np.zeros_like(bottom[i].data)
-
 
 class NonGrayMaskLayer(object):
     ''' Layer outputs a mask based on if the image is grayscale or not
@@ -137,13 +123,6 @@ class NonGrayMaskLayer(object):
         # if an image has any (a,b) value which exceeds threshold, output 1
         top[0].data[...] = (np.sum(np.sum(np.sum(np.abs(bottom[0].data) > self.thresh, axis=1), axis=1), axis=1) > 0)[:,
                            na(), na(), na()]
-
-    def backward(self, top, propagate_down, bottom):
-        # no back-prop
-        for i in range(len(bottom)):
-            if not propagate_down[i]:
-                continue
-            bottom[i].diff[...] = np.zeros_like(bottom[i].data)
 
 
 class ClassRebalanceMultLayer(object):
@@ -225,12 +204,12 @@ class PriorFactor():
             self.print_correction_stats()
 
     def print_correction_stats(self):
-        print 'Prior factor correction:'
-        print '  (alpha,gamma) = (%.2f, %.2f)' % (self.alpha, self.gamma)
-        print '  (min,max,mean,med,exp) = (%.2f, %.2f, %.2f, %.2f, %.2f)' % (
+        print('Prior factor correction:')
+        print('  (alpha,gamma) = (%.2f, %.2f)' % (self.alpha, self.gamma))
+        print('  (min,max,mean,med,exp) = (%.2f, %.2f, %.2f, %.2f, %.2f)' % (
             np.min(self.prior_factor), np.max(self.prior_factor), np.mean(self.prior_factor),
             np.median(self.prior_factor),
-            np.sum(self.prior_factor * self.prior_probs))
+            np.sum(self.prior_factor * self.prior_probs)))
 
     def forward(self, data_ab_quant, axis=1):
         data_ab_maxind = np.argmax(data_ab_quant, axis=axis)

@@ -3,18 +3,36 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 import argparse
 import chainer.training
+import chainer.optimizer
 import chainer.optimizers
 import chainer.dataset.dataset_mixin
+import chainer.cuda
 from chainer.training import extensions
 from model import ImageCaptionGenerator
 import skimage.io
 from dataset import get_flickr8k
 
+
 class ImageCaptionDataset(chainer.dataset.dataset_mixin):
+    """
+    Image Caption Dataset
+    """
+
     def __init__(self, datalist):
+        """
+        initialize dataset
+
+        :param datalist: list of data
+        :return: None
+        """
         self.datalist = datalist
 
     def __len__(self):
+        """
+        length
+
+        :return: length
+        """
         return len(self.datalist)
 
     def get_example(self, i):
@@ -24,15 +42,43 @@ class ImageCaptionDataset(chainer.dataset.dataset_mixin):
 
 
 class SequentialIterator(chainer.dataset.Iterator):
-    def __init__(self,dataset, batch_size, repeat=True):
-        pass
+    def __init__(self, dataset, batch_size, repeat=True):
+        self.dataset = dataset
+        self.index = 0
+
+    def get_train_data(self, dataset):
+        """
+        get training data
+
+        :param dataset: list of ids
+        :return:
+        """
+        return [dataset[index] for index in range(len(dataset) - 1)]
+
+    def get_target_data(self, dataset):
+        """
+        get target data
+
+        :param dataset: list of ids
+        :return:
+        """
+        return [dataset[index] for index in range(1, len(dataset))]
 
     def __next__(self):
-        pass
+        """
+        next iteration
+
+        :return:
+        """
+        image ,data = self.dataset.get_example(self.index)
+        train_data = self.get_train_data(data)
+        target_data = self.get_target_data(data)
+
+        return zip(train_data, target_data)
 
 
 class BPTTUpdater(chainer.training.StandardUpdater):
-    def __init__(self, train_iter, optimizer, bprop_len, device):
+    def __init__(self, train_iter, optimizer, device):
         super(BPTTUpdater, self).__init__(
             train_iter, optimizer, device=device)
 
@@ -44,8 +90,9 @@ class BPTTUpdater(chainer.training.StandardUpdater):
         optimizer = self.get_optimizer('main')
 
         for i in range():
-            batch = train_iter.__next__()
-            self.converter(batch)
+            img , batch = train_iter.__next__()
+            x, t = self.converter(batch, self.device)
+            optimizer.target.initial()
 
             optimizer.target()
 
@@ -62,10 +109,14 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    print("loading dataset:{}".format(args.dataset))
+
     if args.dataset == "flickr8k":
         image_caption_train_list, image_caption_test_list = get_flickr8k("./dataset/flickr8k")
     else:
         raise NotImplementedError()
+
+    interval = 10
 
     train_image_caption_dataset = ImageCaptionDataset(image_caption_train_list)
     test_image_caption_dataset = ImageCaptionDataset(image_caption_test_list)
@@ -79,7 +130,10 @@ if __name__ == '__main__':
     optimizer.setup(model)
     optimizer.add_hook(chainer.optimizer.GradientClipping(args.gradclip))
 
-    updater = BPTTUpdater(train_iter, optimizer, args.bproplen, args.gpu)
-    trainer = training.Trainer(updater, (args.epoch, 'epoch'), out=args.out)
+    updater = BPTTUpdater(train_image_caption_dataset, optimizer, args.bproplen, args.gpu)
+    trainer = chainer.training.Trainer(updater, (args.epoch, 'epoch'), out=args.out)
 
-    SequentialIterator()
+    trainer.extend(extensions.PrintReport(
+        ['epoch', 'iteration', 'perplexity', 'val_perplexity']
+    ), trigger=(interval, 'iteration'))
+    trainer.run()
