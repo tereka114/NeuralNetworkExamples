@@ -1,16 +1,15 @@
 # coding:utf-8
 from __future__ import absolute_import
 from __future__ import unicode_literals
-import skimage
 import os
 import json
-import collections
 
 
 class ImageCaptionData(object):
     def __init__(self, image_path, sentence):
         self.image_path = image_path
         self.sentence = sentence
+        self.image_feature = None
 
 
 def get_flickr8k(dir=""):
@@ -23,8 +22,11 @@ def get_flickr8k(dir=""):
     dataset_path = os.path.join(dir, "dataset.json")
     json_data = json.load(open(dataset_path, "r"))
     print json_data["images"][0].keys()
-    dictionary = {}
-    id = 0
+    dictionary = {
+        "<s>": 0,
+        "</s>": 1
+    }
+    id = 2
 
     images = json_data["images"]
     # create dictionary
@@ -33,6 +35,7 @@ def get_flickr8k(dir=""):
         for token in tokens:
             if not dictionary.has_key(token):
                 dictionary[token] = id
+                id += 1
             else:
                 pass
 
@@ -41,6 +44,7 @@ def get_flickr8k(dir=""):
 
     for data in images:
         tokens = data["sentences"][0]["tokens"]
+        tokens = ["<s>"] + tokens + ["</s?"]
         id_tokens = [dictionary[token] for token in tokens]
         image_filename = data["filename"]
         image_caption_data = ImageCaptionData(image_filename, id_tokens)

@@ -8,7 +8,7 @@ import chainer.optimizers
 import chainer.dataset.dataset_mixin
 import chainer.cuda
 from chainer.training import extensions
-from model import ImageCaptionGenerator
+from model import ImageCaptionGenerator, ImageFeatureModel
 import skimage.io
 from dataset import get_flickr8k
 
@@ -70,7 +70,7 @@ class SequentialIterator(chainer.dataset.Iterator):
 
         :return:
         """
-        image ,data = self.dataset.get_example(self.index)
+        image, data = self.dataset.get_example(self.index)
         train_data = self.get_train_data(data)
         target_data = self.get_target_data(data)
 
@@ -90,7 +90,7 @@ class BPTTUpdater(chainer.training.StandardUpdater):
         optimizer = self.get_optimizer('main')
 
         for i in range():
-            img , batch = train_iter.__next__()
+            img, batch = train_iter.__next__()
             x, t = self.converter(batch, self.device)
             optimizer.target.initial()
 
@@ -102,10 +102,23 @@ class BPTTUpdater(chainer.training.StandardUpdater):
         optimizer.update()
 
 
+def convert_image_to_feature(model, images):
+    """
+    convert image to image feature
+
+    :param model: extraction of image model
+    :param images: list of ImageCaptionData class
+    :return: None
+    """
+    for image in images:
+        image.image_feature = model.extract(image)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--dataset", choice=[])
     parser.add_argument("-g", "--gpu", default=0)
+    parser.add_argument("-f", "--feature_model", default="./models/VGG_ILSVRC_19_layers.caffemodel")
 
     args = parser.parse_args()
 
@@ -115,6 +128,11 @@ if __name__ == '__main__':
         image_caption_train_list, image_caption_test_list = get_flickr8k("./dataset/flickr8k")
     else:
         raise NotImplementedError()
+
+    image_model = ImageFeatureModel(args.feature_model)
+
+    convert_image_to_feature(image_model, image_caption_train_list)
+    convert_image_to_feature(image_model, image_caption_test_list)
 
     interval = 10
 
