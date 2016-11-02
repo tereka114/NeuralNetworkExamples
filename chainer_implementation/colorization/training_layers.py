@@ -11,32 +11,24 @@ import sklearn.neighbors as nn
 from skimage import color
 
 
-class BGR2LabLayer(object):
-    ''' Layer converts BGR to Lab
-    INPUTS
-        bottom[0].data  Nx3xXxY
-    OUTPUTS
-        top[0].data     Nx3xXxY
-    '''
-
-    def setup(self, bottom, top):
-        warnings.filterwarnings("ignore")
-
-        if (len(bottom) != 1):
-            raise Exception("Layer should a single input")
-        if (bottom[0].data.shape[1] != 3):
-            raise Exception("Input should be 3-channel BGR image")
-
-        self.N = bottom[0].data.shape[0]
-        self.X = bottom[0].data.shape[2]
-        self.Y = bottom[0].data.shape[3]
-
-    def reshape(self, bottom, top):
-        top[0].reshape(self.N, 3, self.X, self.Y)
-
-    def forward(self, bottom, top):
-        top[0].data[...] = color.rgb2lab(
-            bottom[0].data[:, ::-1, :, :].astype('uint8').transpose((2, 3, 0, 1))).transpose((2, 3, 0, 1))
+# class BGR2LabLayer(object):
+#     ''' Layer converts BGR to Lab
+#     INPUTS
+#         bottom[0].data  Nx3xXxY
+#     OUTPUTS
+#         top[0].data     Nx3xXxY
+#     '''
+#     def __init__(self, N, X, Y):
+#         self.N = N
+#         self.X = X
+#         self.Y = Y
+#
+#     def reshape(self, bottom, top):
+#         top[0].reshape(self.N, 3, self.X, self.Y)
+#
+#     def forward(self, bottom, top):
+#         top[0].data[...] = color.rgb2lab(
+#             bottom[0].data[:, ::-1, :, :].astype('uint8').transpose((2, 3, 0, 1))).transpose((2, 3, 0, 1))
 
 
 class NNEncLayer(object):
@@ -46,27 +38,22 @@ class NNEncLayer(object):
     OUTPUTS
         top[0].data     NxQ
     '''
-
-    def setup(self, bottom, top):
-        warnings.filterwarnings("ignore")
-
-        if len(bottom) == 0:
-            raise Exception("Layer should have inputs")
-        self.NN = 10.
-        self.sigma = 5.
+    def __init__(self, NN, sigma, N, X, Y, Q):
+        self.NN = NN
+        self.sigma = sigma
         self.ENC_DIR = './resources/'
         self.nnenc = NNEncode(self.NN, self.sigma, km_filepath=os.path.join(self.ENC_DIR, 'pts_in_hull.npy'))
 
-        self.N = bottom[0].data.shape[0]
-        self.X = bottom[0].data.shape[2]
-        self.Y = bottom[0].data.shape[3]
+        self.N = N
+        self.X = X
+        self.Y = Y
         self.Q = self.nnenc.K
+
+    def forward(self, x):
+        return self.nnenc.encode_points_mtx_nd(x)
 
     def reshape(self, bottom, top):
         top[0].reshape(self.N, self.Q, self.X, self.Y)
-
-    def forward(self, bottom, top):
-        top[0].data[...] = self.nnenc.encode_points_mtx_nd(bottom[0].data[...], axis=1)
 
 
 class PriorBoostLayer(object):
@@ -77,7 +64,7 @@ class PriorBoostLayer(object):
         top[0].data     Nx1xXxY
     '''
 
-    def setup(self, bottom, top):
+    def __init__(self, bottom, top, ENC_DIR, gamma, alpha, N, Q, X, Y):
         if len(bottom) == 0:
             raise Exception("Layer should have inputs")
 
@@ -86,10 +73,10 @@ class PriorBoostLayer(object):
         self.alpha = 1.
         self.pc = PriorFactor(self.alpha, gamma=self.gamma, priorFile=os.path.join(self.ENC_DIR, 'prior_probs.npy'))
 
-        self.N = bottom[0].data.shape[0]
-        self.Q = bottom[0].data.shape[1]
-        self.X = bottom[0].data.shape[2]
-        self.Y = bottom[0].data.shape[3]
+        self.N = N
+        self.Q = Q
+        self.X = X
+        self.Y = Y
 
     def reshape(self, bottom, top):
         top[0].reshape(self.N, 1, self.X, self.Y)
@@ -135,12 +122,6 @@ class ClassRebalanceMultLayer(object):
         On forward pass, top[0] passes bottom[0]
         On backward pass, bottom[0] gets boosted by bottom[1]
         through pointwise multiplication (with singleton expansion) '''
-
-    def setup(self, bottom, top):
-        # check input pair
-        if len(bottom) == 0:
-            raise Exception("Specify inputs")
-
     def reshape(self, bottom, top):
         i = 0
         if (bottom[i].data.ndim == 1):
@@ -151,16 +132,17 @@ class ClassRebalanceMultLayer(object):
             top[i].reshape(bottom[i].data.shape[0], bottom[i].data.shape[1], bottom[i].data.shape[2],
                            bottom[i].data.shape[3])
 
-    def forward(self, bottom, top):
+    def forward(self, x):
         # output equation to negative of inputs
-        top[0].data[...] = bottom[0].data[...]
+        # top[0].data[...] = bottom[0].data[...]
+        return x
         # top[0].data[...] = bottom[0].data[...]*bottom[1].data[...] # this was bad, would mess up the gradients going up
 
-    def backward(self, top, propagate_down, bottom):
-        for i in range(len(bottom)):
-            if not propagate_down[i]:
-                continue
-            bottom[0].diff[...] = top[0].diff[...] * bottom[1].data[...]
+    # def backward(self, top, propagate_down, bottom):
+    #     for i in range(len(bottom)):
+    #         if not propagate_down[i]:
+    #             continue
+    #         bottom[0].diff[...] = top[0].diff[...] * bottom[1].data[...]
             # print 'Back-propagating class rebalance, %i'%i
 
 
