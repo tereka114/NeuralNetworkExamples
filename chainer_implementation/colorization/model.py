@@ -108,7 +108,7 @@ class ColorfulImageColorizationModel(chainer.Chain):
         # h = self.class_reblance_layer.forward(h)
         loss = F.softmax_cross_entropy(h, gt_ab_313_va)
 
-        #chainer.report({"loss": loss})
+        chainer.report({"main/loss": loss})
 
         print (loss.data)
 
