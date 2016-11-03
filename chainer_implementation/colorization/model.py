@@ -16,7 +16,6 @@ class ColorfulImageColorizationModel(chainer.Chain):
     """
 
     def __init__(self):
-        # TODO: change the dilated convolution
         super(ColorfulImageColorizationModel, self).__init__(
             data_ab_ss=L.Convolution2D(None, 2, ksize=1, stride=4),
             conv1_1=L.Convolution2D(None, 64, ksize=3, pad=1),
@@ -27,31 +26,30 @@ class ColorfulImageColorizationModel(chainer.Chain):
             conv2_2norm=L.BatchNormalization(128),
             conv3_1=L.Convolution2D(None, 256, ksize=3, pad=1),
             conv3_2=L.Convolution2D(None, 256, ksize=3, pad=1),
-            conv3_3=L.Convolution2D(None, 256, ksize=3, pad=3),
+            conv3_3=L.Convolution2D(None, 256, ksize=3, pad=1, stride=2),
             conv3_3norm=L.BatchNormalization(256),
-            conv4_1=L.Convolution2D(None, 512, ksize=3, pad=1, stride=1),
-            conv4_2=L.Convolution2D(None, 512, ksize=3, pad=1, stride=1),
-            conv4_3=L.Convolution2D(None, 512, ksize=3, pad=1, stride=1),
+            conv4_1=L.DilatedConvolution2D(256, 512, ksize=3, pad=1, dilate=1),
+            conv4_2=L.DilatedConvolution2D(512, 512, ksize=3, pad=1, dilate=1),
+            conv4_3=L.DilatedConvolution2D(512, 512, ksize=3, pad=1, dilate=1),
             conv4_3norm=L.BatchNormalization(512),
-            conv5_1=L.Convolution2D(None, 512, ksize=3, pad=2, stride=1),
-            conv5_2=L.Convolution2D(None, 512, ksize=3, pad=2, stride=1),
-            conv5_3=L.Convolution2D(None, 512, ksize=3, pad=2, stride=1),
+            conv5_1=L.DilatedConvolution2D(512, 512, ksize=3, pad=2, dilate=2),
+            conv5_2=L.DilatedConvolution2D(512, 512, ksize=3, pad=2, dilate=2),
+            conv5_3=L.DilatedConvolution2D(512, 512, ksize=3, pad=2, dilate=2),
             conv5_3norm=L.BatchNormalization(512),
-            conv6_1=L.Convolution2D(None, 512, ksize=3, pad=2, stride=1),
-            conv6_2=L.Convolution2D(None, 512, ksize=3, pad=2, stride=1),
-            conv6_3=L.Convolution2D(None, 512, ksize=3, pad=2, stride=1),
+            conv6_1=L.DilatedConvolution2D(512, 512, ksize=3, pad=2, dilate=2),
+            conv6_2=L.DilatedConvolution2D(512, 512, ksize=3, pad=2, dilate=2),
+            conv6_3=L.DilatedConvolution2D(512, 512, ksize=3, pad=2, dilate=2),
             conv6_3norm=L.BatchNormalization(512),
-            conv7_1=L.Deconvolution2D(512, 512, ksize=3, pad=1),
-            conv7_2=L.Convolution2D(None, 512, ksize=3, pad=1),
-            conv7_3=L.Convolution2D(None, 512, ksize=3, pad=1),
+            conv7_1=L.DilatedConvolution2D(512, 512, ksize=3, pad=1, dilate=1),
+            conv7_2=L.DilatedConvolution2D(512, 512, ksize=3, pad=1, dilate=1),
+            conv7_3=L.DilatedConvolution2D(512, 512, ksize=3, pad=1, dilate=1),
             conv7_3norm=L.BatchNormalization(512),
             conv8_1=L.Deconvolution2D(512, 256, ksize=4, pad=1, stride=2),
-            conv8_2=L.Convolution2D(None, 256, ksize=3, pad=1),
-            conv8_3=L.Convolution2D(None, 256, ksize=3, pad=1),
-            conv313=L.Convolution2D(None, 313, ksize=1, stride=1)
+            conv8_2=L.DilatedConvolution2D(256, 256, ksize=3, pad=1, dilate=1),
+            conv8_3=L.DilatedConvolution2D(256, 256, ksize=3, pad=1, dilate=1),
+            conv313=L.DilatedConvolution2D(256, 313, ksize=1, dilate=1)
         )
 
-        # TODO: define layer
         self.prior_boost_layer = PriorBoostLayer(
 
         )
@@ -105,10 +103,13 @@ class ColorfulImageColorizationModel(chainer.Chain):
         h = F.relu(self.conv8_3(h))
 
         h = F.relu(self.conv313(h))
+        print (h.shape, gt_ab_313_va.shape)
 
         # h = self.class_reblance_layer.forward(h)
         loss = F.softmax_cross_entropy(h, gt_ab_313_va)
 
-        chainer.report({"loss": loss})
+        #chainer.report({"loss": loss})
+
+        print (loss.data)
 
         return loss

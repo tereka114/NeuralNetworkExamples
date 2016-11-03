@@ -38,19 +38,19 @@ class NNEncLayer(object):
     OUTPUTS
         top[0].data     NxQ
     '''
-    def __init__(self, NN, sigma, N, X, Y, Q):
-        self.NN = NN
-        self.sigma = sigma
+
+    def __init__(self):
+        self.NN = 32
+        self.sigma = 0.5
         self.ENC_DIR = './resources/'
         self.nnenc = NNEncode(self.NN, self.sigma, km_filepath=os.path.join(self.ENC_DIR, 'pts_in_hull.npy'))
 
-        self.N = N
-        self.X = X
-        self.Y = Y
+        self.X = 224
+        self.Y = 224
         self.Q = self.nnenc.K
 
     def forward(self, x):
-        return self.nnenc.encode_points_mtx_nd(x)
+        return np.argmax(self.nnenc.encode_points_mtx_nd(x), axis=1).astype(np.int32)
 
     def reshape(self, bottom, top):
         top[0].reshape(self.N, self.Q, self.X, self.Y)
@@ -64,19 +64,14 @@ class PriorBoostLayer(object):
         top[0].data     Nx1xXxY
     '''
 
-    def __init__(self, bottom, top, ENC_DIR, gamma, alpha, N, Q, X, Y):
-        if len(bottom) == 0:
-            raise Exception("Layer should have inputs")
-
+    def __init__(self, ENC_DIR='./resources/', gamma=0.5, alpha=1.0):
         self.ENC_DIR = './resources/'
         self.gamma = .5
         self.alpha = 1.
         self.pc = PriorFactor(self.alpha, gamma=self.gamma, priorFile=os.path.join(self.ENC_DIR, 'prior_probs.npy'))
 
-        self.N = N
-        self.Q = Q
-        self.X = X
-        self.Y = Y
+        self.X = 224
+        self.Y = 224
 
     def reshape(self, bottom, top):
         top[0].reshape(self.N, 1, self.X, self.Y)
@@ -122,6 +117,7 @@ class ClassRebalanceMultLayer(object):
         On forward pass, top[0] passes bottom[0]
         On backward pass, bottom[0] gets boosted by bottom[1]
         through pointwise multiplication (with singleton expansion) '''
+
     def reshape(self, bottom, top):
         i = 0
         if (bottom[i].data.ndim == 1):
@@ -138,12 +134,12 @@ class ClassRebalanceMultLayer(object):
         return x
         # top[0].data[...] = bottom[0].data[...]*bottom[1].data[...] # this was bad, would mess up the gradients going up
 
-    # def backward(self, top, propagate_down, bottom):
-    #     for i in range(len(bottom)):
-    #         if not propagate_down[i]:
-    #             continue
-    #         bottom[0].diff[...] = top[0].diff[...] * bottom[1].data[...]
-            # print 'Back-propagating class rebalance, %i'%i
+        # def backward(self, top, propagate_down, bottom):
+        #     for i in range(len(bottom)):
+        #         if not propagate_down[i]:
+        #             continue
+        #         bottom[0].diff[...] = top[0].diff[...] * bottom[1].data[...]
+        # print 'Back-propagating class rebalance, %i'%i
 
 
 # ***************************
