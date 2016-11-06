@@ -58,9 +58,10 @@ class ColorfulImageColorizationModel(chainer.Chain):
         self.non_gray_mask_layer = NonGrayMaskLayer()
 
     def __call__(self, x, y):
-        data_ab_ss = self.data_ab_ss(y)
-        gt_ab_313 = self.nn_enc_layer.forward(data_ab_ss.data)
-        gt_ab_313_va = chainer.Variable(gt_ab_313)
+        if y is not None:
+            data_ab_ss = self.data_ab_ss(y)
+            gt_ab_313 = self.nn_enc_layer.forward(data_ab_ss.data)
+            gt_ab_313_va = chainer.Variable(gt_ab_313)
 
         # non_gray_mask = self.non_gray_mask_layer.forward(data_ab_ss)
         # prior_boost = self.prior_boost_layer.forward(gt_ab_313)
@@ -103,13 +104,10 @@ class ColorfulImageColorizationModel(chainer.Chain):
         h = F.relu(self.conv8_3(h))
 
         h = F.relu(self.conv313(h))
-        print (h.shape, gt_ab_313_va.shape)
 
-        # h = self.class_reblance_layer.forward(h)
-        loss = F.softmax_cross_entropy(h, gt_ab_313_va)
-
-        chainer.report({"main/loss": loss})
-
-        print (loss.data)
-
-        return loss
+        if y is not None:
+            print (h.shape, gt_ab_313_va.shape)
+            loss = F.softmax_cross_entropy(h, gt_ab_313_va)
+            chainer.report({"main/loss": loss})
+        else:
+            return gt_ab_313_va
