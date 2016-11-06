@@ -6,6 +6,7 @@ import chainer.optimizers
 import chainer.iterators
 import chainer.training.extensions
 import chainer.cuda
+import chainer.serializers
 import argparse
 import skimage.io
 import skimage.transform
@@ -65,3 +66,4 @@ trainer.extend(chainer.training.extensions.PrintReport(
 )
 # trainer.extend(chainer.training.extensions.ProgressBar())
 trainer.run()
+chainer.serializers.save_hdf5("./models/colorization.h5", model)

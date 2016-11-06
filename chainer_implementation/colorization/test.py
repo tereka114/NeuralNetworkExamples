@@ -1,10 +1,13 @@
 # coding:utf-8
 from __future__ import absolute_import
-from __future__ import unicode_literals
+
 import argparse
+import chainer.serializers
+
 from skimage import color
 import skimage.io
 from model import ColorfulImageColorizationModel
+import numpy as np
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-i", "--input_image")
@@ -20,4 +23,5 @@ img_l = img_lab[:,:, 0]
 # create grayscale version of image (just for displaying)
 
 model = ColorfulImageColorizationModel()
-pred = model([img_l])
+chainer.serializers.load_hdf5("./models/colorization.h5", model)
+pred = model(np.array([img_l]))
