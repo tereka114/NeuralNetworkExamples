@@ -14,7 +14,6 @@ import glob
 from model import ColorfulImageColorizationModel
 import numpy as np
 
-
 parser = argparse.ArgumentParser()
 parser.add_argument("-g", "--gpu", type=int, default=-1)
 parser.add_argument("-d", "--directory", type=str, default="./dataset/VOCdevkit/VOC2012/JPEGImages")
@@ -49,6 +48,7 @@ if args.gpu >= 0:
 
 optimizer = chainer.optimizers.Adam()
 optimizer.setup(model)
+iteration = 100
 
 jpeg_files = glob.glob(args.directory + "/*.jpg")
 dataset = DatasetMixin(jpeg_files)
@@ -58,10 +58,10 @@ train_iter = chainer.iterators.SerialIterator(dataset=dataset, batch_size=8)
 updater = chainer.training.StandardUpdater(train_iter, optimizer, device=args.gpu)
 trainer = chainer.training.Trainer(updater=updater)
 trainer.extend(chainer.training.extensions.dump_graph('main/loss'))
-
+trainer.extend(chainer.training.extensions.LogReport())
 trainer.extend(chainer.training.extensions.PrintReport(
     ['epoch', 'main/loss', 'validation/main/loss',
      'main/accuracy', 'validation/main/accuracy'])
 )
-trainer.extend(chainer.training.extensions.ProgressBar())
+# trainer.extend(chainer.training.extensions.ProgressBar())
 trainer.run()
